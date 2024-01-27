@@ -1,25 +1,102 @@
-import type { LoaderFunction, MetaFunction } from "@remix-run/node";
+import type { ActionFunction, MetaFunction } from "@remix-run/node";
 import { authenticator } from "~/utils/auth.server";
+import { Form, useLoaderData } from "@remix-run/react";
+import { LoaderFunction } from "@remix-run/node";
+import { createTask, getMyTasks, deleteTask } from "~/utils/tasks.server";
+import { Taskform } from "~/components/taskform";
+import { Tasklist, TaskListProps } from "~/components/tasklist";
 
 export const meta: MetaFunction = () => {
-  return [
-    { title: "New Remix App" },
-    { name: "description", content: "Welcome to Remix!" },
-  ];
+  return [{ title: "Fullstack Remix App" }];
 };
 
 export const loader: LoaderFunction = async ({ request }) => {
-  const user = await authenticator.isAuthenticated(request, {
+  const user: any = await authenticator.isAuthenticated(request, {
     failureRedirect: "/login",
   });
+  const userTask = await getMyTasks(user.id);
+  return { user, userTask };
+};
 
-  return { user };
+export const action: ActionFunction = async ({ request }) => {
+  const form = await request.formData();
+  const action = form.get("action");
+
+  switch (action) {
+    case "logout": {
+      return await authenticator.logout(request, { redirectTo: "/login" });
+    }
+    case "new": {
+      const Category: any = form.get("category");
+      const Message: any = form.get("message");
+      const user: any = await authenticator.isAuthenticated(request);
+      const newTask = await createTask({
+        category: Category,
+        message: Message,
+        postedBy: {
+          connect: {
+            id: user.id,
+          },
+        },
+      });
+      return newTask;
+    }
+    case "delete": {
+      const id: any = form.get("id");
+      const deletedTask = await deleteTask(id);
+      return deletedTask;
+    }
+    default:
+      return null;
+  }
 };
 
 export default function Index() {
+  const { user, userTask } = useLoaderData<typeof loader>();
   return (
-    <div>
-      <h1 className="text-red-600">Welcome to Remix</h1>
+    <div className="h-screen bg-yellow-100 pt-10">
+      <div className="max-w-md mx-auto items-left flex flex-col bg-white p-6">
+        <div className="d-flex flex-row mb-10">
+          <h2 className="text-sm font-normal text-gray-500">
+            Welcome {user.name}!
+          </h2>
+          <div className="flex items-center">
+            <h1 className="text-3xl font-bold pe-2">Task tracking app</h1>
+            {user ? (
+              <Form method="post">
+                <button
+                  type="submit"
+                  name="action"
+                  value="logout"
+                  className="text-red-500 py-1 border px-3 text-sm rounded-md font-semibold"
+                >
+                  Logout
+                </button>
+              </Form>
+            ) : null}
+          </div>
+        </div>
+        <Taskform />
+        <br />
+        <div className="grid gap-5">
+          {userTask.task.length ? (
+            <>
+              {userTask.task.map((task: TaskListProps) => {
+                return (
+                  <Tasklist
+                    key={task.id}
+                    id={task.id}
+                    message={task.message}
+                    category={task.category}
+                  />
+                );
+              })}
+            </>
+          ) : (
+            "😳 No task"
+          )}
+        </div>
+      </div>
     </div>
   );
 }

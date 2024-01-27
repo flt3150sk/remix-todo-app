@@ -17,5 +17,21 @@ model User {
   email     String   @unique
   password  String
   name      String
+  task     Task[]
 }
 
+enum Category {
+  OTHER
+  HOME
+  OFFICE
+}
+
+model Task {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  message   String
+  category  String
+  taskId   String @db.ObjectId
+  postedBy  User     @relation(fields: [taskId], references: [id])
+}
