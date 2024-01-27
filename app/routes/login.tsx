@@ -7,17 +7,25 @@ import type {
 import { Layout } from "~/components/layout";
 import { TextField } from "~/components/textfield";
 import { useState } from "react";
+import { authenticator } from "~/utils/auth.server";
 
 export const meta: MetaFunction = () => {
   return [{ title: "New Remix App login" }];
 };
 
-export const loader: LoaderFunction = async () => {
-  return "";
+export const loader: LoaderFunction = async ({ request }) => {
+  const user = await authenticator.isAuthenticated(request, {
+    successRedirect: "/",
+  });
+
+  return { user };
 };
 
 export const action: ActionFunction = async ({ request }) => {
-  return "";
+  return authenticator.authenticate("form", request, {
+    successRedirect: "/",
+    failureRedirect: "/login",
+  });
 };
 
 export default function Login() {

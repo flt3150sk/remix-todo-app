@@ -1,5 +1,5 @@
 import { Link, useActionData } from "@remix-run/react";
-import type {
+import {
   ActionFunction,
   LoaderFunction,
   json,
@@ -8,17 +8,44 @@ import type {
 import { Layout } from "~/components/layout";
 import { TextField } from "~/components/textfield";
 import { useState } from "react";
+import { createUser } from "~/utils/user.server";
+import { authenticator } from "~/utils/auth.server";
 
 export const meta: MetaFunction = () => {
   return [{ title: "New Remix App signup" }];
 };
 
-export const loader: LoaderFunction = async () => {
-  return "";
+export const loader: LoaderFunction = async ({ request }) => {
+  const user = await authenticator.isAuthenticated(request, {
+    successRedirect: "/",
+  });
+
+  return { user };
 };
 
 export const action: ActionFunction = async ({ request }) => {
-  return "";
+  const form = await request.formData();
+  const action = form.get("_action");
+  const email = form.get("email");
+  const password = form.get("password");
+  const name = form.get("name");
+
+  if (
+    typeof action !== "string" ||
+    typeof email !== "string" ||
+    typeof password !== "string" ||
+    typeof name !== "string"
+  ) {
+    return json({ error: "Invalid Form Data", form: action }, { status: 400 });
+  }
+
+  await createUser({ email, password, name });
+
+  return await authenticator.authenticate("form", request, {
+    successRedirect: "/",
+    failureRedirect: "/signup",
+    context: { formData: form },
+  });
 };
 
 export default function Signup() {
